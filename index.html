@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Gerador de Nomes de Projeto</title>
+  <style>
+    /* Centraliza o conteúdo */
+    body {
+      text-align: center;
+      margin: 0 auto;
+      font-family: Arial, sans-serif;
+    }
+
+    /* Logo no topo */
+    .logo-container {
+      margin-top: 20px;
+      margin-bottom: 20px;
+    }
+    .logo-container img {
+      max-height: 70px;
+    }
+
+    h1 {
+      margin: 0;
+      margin-bottom: 20px;
+    }
+
+    /* Cada "linha" do layout (3 linhas) */
+    .line {
+      margin: 10px 0;
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .field-group {
+      display: inline-flex;
+      align-items: center;
+      margin-right: 20px;
+      margin-bottom: 10px;
+    }
+    .field-group label {
+      font-weight: bold;
+      margin-right: 5px;
+    }
+
+    select, input {
+      padding: 5px;
+      margin-right: 10px;
+    }
+
+    /* Inputs menores */
+    .small-input {
+      width: 60px;
+      text-align: center;
+    }
+    #descricao {
+      width: 180px;
+    }
+    #responsavel {
+      width: 120px;
+    }
+
+    /* Botão */
+    button {
+      padding: 6px 12px;
+      font-weight: bold;
+      cursor: pointer;
+      background-color: #0057A1;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+    }
+    button:hover {
+      background-color: #003f78;
+    }
+
+    /* Resultado em destaque */
+    #resultado {
+      font-size: 1.3em;
+      color: #0057A1;
+      font-weight: bold;
+      min-width: 200px;
+      text-align: left;
+    }
+
+    /* Oculta as linhas 2 e 3 inicialmente */
+    #line2,
+    #line3 {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Logo -->
+  <div class="logo-container">
+    <img src="https://www.inova.ind.br/assets/img/logoInova.png" alt="Logo Inova" />
+  </div>
+
+  <h1>Gerador de Nomes de Projeto</h1>
+
+  <!-- Linha 1: Seleção da equipe -->
+  <div class="line" id="line1">
+    <div class="field-group">
+      <label for="equipesSelect">Equipe:</label>
+      <select id="equipesSelect">
+        <option value="">-- Carregando equipes... --</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Linha 2: Configurações (XX, AA, Descrição, Tipo, Objetivo, Responsável) -->
+  <div class="line" id="line2">
+    <div class="field-group">
+      <label for="xx">Número (XX):</label>
+      <input type="text" id="xx" class="small-input" />
+    </div>
+
+    <div class="field-group">
+      <label for="aa">Ano (AA):</label>
+      <input type="text" id="aa" class="small-input" />
+    </div>
+
+    <div class="field-group">
+      <label for="descricao">Descrição:</label>
+      <input type="text" id="descricao" />
+    </div>
+
+    <div class="field-group">
+      <label for="tipoSelect">Tipo:</label>
+      <select id="tipoSelect">
+        <option value="">--</option>
+      </select>
+    </div>
+
+    <div class="field-group">
+      <label for="objetivoSelect">Objetivo:</label>
+      <select id="objetivoSelect">
+        <option value="">--</option>
+      </select>
+    </div>
+
+    <div class="field-group">
+      <label for="responsavel">@Responsável:</label>
+      <input type="text" id="responsavel" />
+    </div>
+  </div>
+
+  <!-- Linha 3: Botão + Resultado -->
+  <div class="line" id="line3">
+    <div class="field-group">
+      <button type="button" onclick="gerarNomeProjeto()">Gerar Nome de Projeto</button>
+    </div>
+    <div class="field-group">
+      <div id="resultado"></div>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * 1) URL base do seu repositório no GitHub, apontando para a branch main,
+     *    onde estão teams.csv e os demais CSVs de cada equipe.
+     */
+    const baseURL = "https://raw.githubusercontent.com/Inova-Sistemas-Eletronicos/runrunitNameConfig/main/";
+
+    /**
+     * Ao carregar a página, vamos:
+     * - Carregar a lista de equipes de "teams.csv"
+     * - Preencher o campo 'aa' com os últimos 2 dígitos do ano
+     */
+    window.addEventListener('load', () => {
+      carregarListaDeEquipes();
+      const aaInput = document.getElementById('aa');
+      aaInput.value = new Date().getFullYear().toString().slice(-2);
+    });
+
+    /**
+     * Faz fetch no teams.csv para popular dinamicamente o <select> "equipesSelect".
+     * Exemplo de teams.csv esperado:
+     *
+     * TEAM_FILE
+     * RAID.csv
+     * SW.csv
+     * FLEX.csv
+     * SMD.csv
+     * TI.csv
+     */
+    function carregarListaDeEquipes() {
+      // Ajustamos o placeholder para mostrar "Carregando..."
+      const equipesSelect = document.getElementById('equipesSelect');
+      equipesSelect.innerHTML = `<option value="">-- Selecione a Equipe --</option>`;
+
+      fetch(baseURL + "teams.csv")
+        .then(res => {
+          if (!res.ok) {
+            throw new Error("Erro ao buscar teams.csv: " + res.status);
+          }
+          return res.text();
+        })
+        .then(csvText => {
+          const linhas = csvText.split(/\r?\n/).map(l => l.trim()).filter(l => l);
+          // Se a primeira linha for um cabeçalho, remove:
+          if (linhas[0] === "TEAM_FILE") {
+            linhas.shift(); // remove "TEAM_FILE"
+          }
+
+          // Para cada linha (ex: "RAID.csv"), adicionamos uma opção
+          linhas.forEach(nomeArquivo => {
+            adicionarEquipe(nomeArquivo);
+          });
+        })
+        .catch(err => {
+          console.error(err);
+          alert("Não foi possível carregar teams.csv. Verifique o console.");
+          // Se falhar, deixamos o select vazio
+          equipesSelect.innerHTML = `<option value="">(Erro ao carregar)</option>`;
+        });
+    }
+
+    /**
+     * Cria uma <option> para uma linha do teams.csv, ex: "RAID.csv".
+     * No texto mostramos "RAID"; no value, "RAID.csv".
+     */
+    function adicionarEquipe(arquivoCSV) {
+      if (!arquivoCSV) return;
+      const select = document.getElementById('equipesSelect');
+
+      // Retira ".csv" para exibir somente o nome
+      let nomeEquipe = arquivoCSV;
+      if (arquivoCSV.toLowerCase().endsWith(".csv")) {
+        nomeEquipe = arquivoCSV.slice(0, -4); // remove .csv
+      }
+
+      const option = document.createElement('option');
+      option.value = arquivoCSV;
+      option.textContent = nomeEquipe;
+      select.appendChild(option);
+    }
+
+    /**
+     * Evento ao mudar a equipe (quando usuário seleciona uma no <select>)
+     */
+    document.getElementById('equipesSelect').addEventListener('change', function() {
+      const arquivoCSV = this.value; // ex: "RAID.csv"
+      if (arquivoCSV) {
+        // Mostra linhas 2 e 3
+        mostrarLinhas2e3(true);
+        // Carrega o CSV daquela equipe (para preencher Tipo e Objetivo)
+        buscarEquipeCSV(arquivoCSV);
+      } else {
+        // Se não selecionou nada, esconde tudo e limpa
+        mostrarLinhas2e3(false);
+        limparSelect('tipoSelect');
+        limparSelect('objetivoSelect');
+      }
+    });
+
+    /**
+     * Faz fetch no CSV da equipe selecionada (por exemplo, "RAID.csv").
+     * Supondo que tenha colunas TIPO,OBJETIVO e cabeçalho "TIPO,OBJETIVO".
+     */
+    function buscarEquipeCSV(nomeArquivo) {
+      const url = baseURL + nomeArquivo;
+      fetch(url)
+        .then(res => {
+          if (!res.ok) {
+            throw new Error("Erro ao buscar " + nomeArquivo + ": " + res.status);
+          }
+          return res.text();
+        })
+        .then(csvText => {
+          processarEquipeCSV(csvText);
+        })
+        .catch(err => {
+          console.error(err);
+          alert("Não foi possível carregar o CSV da equipe selecionada.");
+          // Se falhar, podemos ocultar as linhas 2 e 3 novamente
+          mostrarLinhas2e3(false);
+        });
+    }
+
+    /**
+     * Lê o CSV da equipe e popula tipoSelect e objetivoSelect.
+     */
+    function processarEquipeCSV(csvText) {
+      const linhas = csvText.split(/\r?\n/).map(l => l.trim()).filter(l => l);
+      // Remove a primeira linha (cabeçalho), ex: "TIPO,OBJETIVO"
+      if (linhas.length > 0) {
+        linhas.shift();
+      }
+
+      // Limpa os selects antes de popular
+      limparSelect('tipoSelect');
+      limparSelect('objetivoSelect');
+
+      // Para cada linha, assumimos "TIPO,OBJETIVO"
+      linhas.forEach(linha => {
+        const partes = linha.split(',');
+        if (partes.length < 2) return;
+        const tipo = partes[0].trim();
+        const objetivo = partes[1].trim();
+
+        adicionarOpcaoUnica('tipoSelect', tipo);
+        adicionarOpcaoUnica('objetivoSelect', objetivo);
+      });
+    }
+
+    /**
+     * Adiciona uma opção num <select>, sem duplicar
+     */
+    function adicionarOpcaoUnica(selectId, valor) {
+      if (!valor) return;
+      const sel = document.getElementById(selectId);
+      for (let i = 0; i < sel.options.length; i++) {
+        if (sel.options[i].value === valor) {
+          return;
+        }
+      }
+      const opt = document.createElement('option');
+      opt.value = valor;
+      opt.textContent = valor;
+      sel.appendChild(opt);
+    }
+
+    /**
+     * Limpa todas as opções de um <select>, deixando somente a primeira (--)
+     */
+    function limparSelect(selectId) {
+      const sel = document.getElementById(selectId);
+      sel.options.length = 1; // preserve a option 0
+    }
+
+    /**
+     * Mostra ou esconde as linhas 2 e 3
+     */
+    function mostrarLinhas2e3(acao) {
+      document.getElementById('line2').style.display = acao ? 'flex' : 'none';
+      document.getElementById('line3').style.display = acao ? 'flex' : 'none';
+    }
+
+    /**
+     * Monta o nome do projeto: XX/AA Descrição [TIPO_OBJETIVO_EQUIPE] @Responsável
+     */
+    function gerarNomeProjeto() {
+      const xx = document.getElementById('xx').value.trim();
+      const aa = document.getElementById('aa').value.trim();
+      const descricao = document.getElementById('descricao').value.trim();
+      const tipo = document.getElementById('tipoSelect').value.trim();
+      const objetivo = document.getElementById('objetivoSelect').value.trim();
+
+      // O texto exibido no select de equipe é, por exemplo, "RAID"
+      const nomeEquipe = document.getElementById('equipesSelect').selectedOptions[0]?.text;
+
+      const responsavel = document.getElementById('responsavel').value.trim();
+
+      // Monta [TIPO_OBJETIVO_EQUIPE]
+      const colchetes = `[${tipo}_${objetivo}_${nomeEquipe}]`;
+      const nomeProjeto = `${xx}/${aa} ${descricao} ${colchetes} @${responsavel}`;
+
+      document.getElementById('resultado').textContent = nomeProjeto;
+    }
+  </script>
+</body>
+</html>
