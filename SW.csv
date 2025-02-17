@@ -1,6 +1,11 @@
 TIPO,OBJETIVO
-SIS,n sei
-COMMIT,NP
+,IN
+,ML
 ,RC
-,IP
-,NP
+,SE
+FRT,
+BCK,
+INF,
+SIS,
+SUP,
+APP,
